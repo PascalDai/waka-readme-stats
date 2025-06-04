@@ -91,9 +91,13 @@ async def get_short_github_info() -> str:
         disk_usage = FM.t("Used in GitHub's Storage") % naturalsize(GHM.USER.disk_usage)
     stats += f"> 📦 {disk_usage} \n > \n"
 
-    data = await DM.get_remote_json("github_stats")
-    if data is None:
-        DBM.p("GitHub contributions data unavailable!")
+    try:
+        data = await DM.get_remote_json("github_stats")
+        if data is None:
+            DBM.p("GitHub contributions data unavailable!")
+            return stats
+    except Exception as e:
+        DBM.p(f"Failed to get GitHub stats: {e}")
         return stats
 
     DBM.i("Adding contributions info...")
@@ -175,8 +179,14 @@ async def get_stats() -> str:
 
     if EM.SHOW_PROFILE_VIEWS:
         DBM.i("Adding profile views info...")
-        data = GHM.REMOTE.get_views_traffic(per="week")
-        stats += f"![Profile Views](http://img.shields.io/badge/{quote(FM.t('Profile Views'))}-{data['count']}-blue)\n\n"
+        try:
+            data = GHM.REMOTE.get_views_traffic(per="week")
+            # PyGithub View object has 'count' as an attribute, not a dictionary key
+            view_count = data.count if hasattr(data, 'count') else 0
+            stats += f"![Profile Views](http://img.shields.io/badge/{quote(FM.t('Profile Views'))}-{view_count}-blue)\n\n"
+        except Exception as e:
+            DBM.p(f"Failed to get profile views: {e}")
+            stats += f"![Profile Views](http://img.shields.io/badge/{quote(FM.t('Profile Views'))}-0-blue)\n\n"
 
     if EM.SHOW_LINES_OF_CODE:
         DBM.i("Adding lines of code info...")
